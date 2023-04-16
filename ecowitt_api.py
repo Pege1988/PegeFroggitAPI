@@ -1,27 +1,31 @@
 # Program to retrieve data from ecowitt weather station via AppID
-# Version 1.0.0
+# Version 1.0.1
 
 # Documentation on API: https://doc.ecowitt.net/web/#/1?page_id=11
 # Device developer information: https://api.ecowitt.net/index/user/mydevice.html
 
-import json
-from urllib.request import urlopen
-import sqlite3
 from datetime import datetime
-import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import json
+import logging
+import os
 import smtplib
+import sqlite3
+from urllib.request import urlopen
 
 #==============================================================
 #   PARAMETERS
 #==============================================================
-
-# Test parameter (if test local, else synology)
-test = False
-
+# Paths
+main_path = os.getcwd()
+if main_path.find("Dropbox") != -1:
+  synology = False
+else:
+  synology = True
+  
 # Filepaths
-if test == True:
+if synology == False:
     data_path = r"C:\Users\neo_1\Dropbox\Projects\Programing\PegeFroggitAPI\Data"
     script_path = r"C:\Users\neo_1\Dropbox\Projects\Programing\PegeFroggitAPI"
 else:
@@ -33,6 +37,19 @@ conf_file = "confidential.txt"
 
 sql_path = os.path.join(data_path, sql_file)
 conf_path = os.path.join(script_path, conf_file)
+log_file_path = os.path.join(script_path, 'log/main.log')
+
+logger = logging.getLogger()
+if synology == True:
+   logger.setLevel(logging.INFO)
+else:
+  logger.setLevel(logging.DEBUG)
+fhandler = logging.FileHandler(filename = log_file_path, mode = 'a')
+formatter = logging.Formatter('%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s', '%d-%m-%Y %H:%M:%S')
+fhandler.setFormatter(formatter)
+logger.addHandler(fhandler)
+
+logging.info('Start of program')
 
 #==============================================================
 #   FUNCTIONS
@@ -45,7 +62,7 @@ def get_token():
     html = urlopen(access_token_url).read()
     access_token_json = json.loads(html)
     access_token = access_token_json['access_token']
-    print("Access token provided successfully!")
+    logging.info('Access token provided successfully!')
     return(access_token)
 
 # Script to get JSON file for real time weather data
@@ -54,16 +71,18 @@ def get_data():
     realtime_url="https://api.ecowitt.net/api/devicedata/real_time?access_token="+access_token+"&openid="+OpenID+"&lang=en&call_back=all"
     realtime_datafile = urlopen(realtime_url).read().decode()
     realtime_data = json.loads(realtime_datafile)
-    print("Json file available!")
-    if test == True:
+    logging.info('Json file available!')
+    if synology == True:
         save_json = open(os.path.join(data_path, "froggit.json"), "w+")
         json.dump(realtime_data, save_json)
         save_json.close()
         send_alarm("PEGE_FROGGIT: JSON file stored locally", recipient)
+        logging.info('PEGE_FROGGIT: JSON file stored locally')
     return(realtime_data)
 
 def get_timestamp():
     timestamp=datetime.utcfromtimestamp(int(realtime_data['time'])).strftime('%Y-%m-%d %H:%M:%S')
+    logging.info('Timestamp: ' + timestamp)
     return(timestamp)
 
 def slice_data(l1, l2, l3='value'):
@@ -78,6 +97,7 @@ def check_connection():
             outdoor_data=outdoor_data+1
     if outdoor_data == 0:
         send_alarm("Alert: Pege Froggit connection issue", recipient)
+        logging.error("Alert: Pege Froggit connection issue")
 
 # Send Mail
 def send_alarm(subject, recipient):
@@ -127,7 +147,7 @@ try:
     realtime_data = get_data()
     timestamp = get_timestamp()
 except:
-    print("Pege froggit data could not be retrieved")
+    logging.error('Pege froggit data could not be retrieved')
     send_alarm("ALERT: Pege froggit data could not be retrieved", recipient)
 
 # Store data in variables
@@ -171,7 +191,7 @@ try:
     print("Data retrieval succes")
 except:
     send_alarm("Data could not be retrieved", recipient)
-    print("ALERT: Pege Froggit data could not be retrieved")
+    logging.error('Data could not be retrieved')
 
 # Save data
 try:
@@ -181,6 +201,6 @@ try:
     conn.commit()
 except:
     send_alarm("Data could not be stored", recipient)
-    print("ALERT: Pege Froggit data could not be stored")
+    logging.error('Pege Froggit data could not be stored')
 
 check_connection()
