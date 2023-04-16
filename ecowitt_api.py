@@ -1,5 +1,5 @@
 # Program to retrieve data from ecowitt weather station via AppID
-# Version 1.0.1
+# Version 1.0.2
 
 # Documentation on API: https://doc.ecowitt.net/web/#/1?page_id=11
 # Device developer information: https://api.ecowitt.net/index/user/mydevice.html
@@ -40,7 +40,7 @@ conf_path = os.path.join(script_path, conf_file)
 log_file_path = os.path.join(script_path, 'log/main.log')
 
 logger = logging.getLogger()
-if synology == True:
+if synology == False:
    logger.setLevel(logging.INFO)
 else:
   logger.setLevel(logging.DEBUG)
@@ -72,7 +72,7 @@ def get_data():
     realtime_datafile = urlopen(realtime_url).read().decode()
     realtime_data = json.loads(realtime_datafile)
     logging.info('Json file available!')
-    if synology == True:
+    if synology == False:
         save_json = open(os.path.join(data_path, "froggit.json"), "w+")
         json.dump(realtime_data, save_json)
         save_json.close()
