@@ -22,7 +22,7 @@ else:
   
 # Filepaths
 if synology == False:
-    data_path = r"C:\Users\neo_1\Dropbox\Projects\Programing\PegeFroggitAPI\Data"
+    data_path = r"C:\Users\neo_1\Dropbox\Projects\Programing\PegeFroggitAPI\data"
     script_path = r"C:\Users\neo_1\Dropbox\Projects\Programing\PegeFroggitAPI"
 else:
     data_path = "/volume1/homes/Pege_admin/Python_scripts"
