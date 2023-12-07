@@ -41,7 +41,7 @@ if synology == False:
 else:
   logger.setLevel(logging.DEBUG)
 fhandler = logging.FileHandler(filename = log_file_path, mode = "a")
-formatter = logging.Formatter("%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s", "%d-%m-%Y %H:%M:%S")
+formatter = logging.Formatter("%(asctime)s.%(msecs)03d [%(levelname)s] [%(module)s-%(funcName)s] %(message)s", "%d-%m-%Y %H:%M:%S")
 fhandler.setFormatter(formatter)
 logger.addHandler(fhandler)
 
@@ -50,9 +50,19 @@ logging.info("Start of program")
 subject = "PEGE FROGGIT API - Alert"
 
 # Prepare JSON data
-try:
-    realtime_data = api.get_data()
-    timestamp = api.get_timestamp()
+try:   
+    access_token_url = "https://api.ecowitt.net/api/token?grant_type="\
+        "client_credential&appid=" + cf.APP_ID + "&secret=" + cf.SECRET   
+    acces_token_json = api.read_json(access_token_url)
+
+    realtime_url="https://api.ecowitt.net/api/devicedata/real_time?access_token="\
+        + api.get_token(acces_token_json) + "&openid=" + cf.OPEN_ID + \
+        "&lang=en&call_back=all"
+    realtime_data_json = api.read_json(realtime_url)
+    realtime_data = api.get_data(realtime_data_json)
+
+    timestamp = api.get_timestamp(realtime_data)
+
 except:
     error_message = "Pege froggit data could not be retrieved"
     logging.error(error_message)
@@ -61,42 +71,43 @@ except:
 # Store data in variables
 try:
     # Indoor data
-    indoor_temp_data=round((float(api.slice_data("indoor", "temp"))-32)*(5/9),1)
-    indoor_humidity_data=api.slice_data("indoor","humidity")
+    indoor_temp_data=round((float(api.slice_data(realtime_data, "indoor", "temp"))-32)*(5/9),1)
+    indoor_humidity_data=api.slice_data(realtime_data, "indoor","humidity")
 
     # Pressure data
-    rel_pressure_data=round(float(api.slice_data("pressure","baromrelin"))*33.86389,1)
-    abs_pressure_data=round(float(api.slice_data("pressure","baromabsin"))*33.86389,1)
+    rel_pressure_data=round(float(api.slice_data(realtime_data, "pressure","baromrelin"))*33.86389,1)
+    abs_pressure_data=round(float(api.slice_data(realtime_data, "pressure","baromabsin"))*33.86389,1)
 
     # Outdoor data
-    outdoor_temp_data=round((float(api.slice_data("outdoor","temp"))-32)*(5/9),1)
-    outdoor_humidity_data=api.slice_data("outdoor","humidity")
+    outdoor_temp_data=round((float(api.slice_data(realtime_data, "outdoor","temp"))-32)*(5/9),1)
+    outdoor_humidity_data=api.slice_data(realtime_data, "outdoor","humidity")
 
     # Wind data
-    wind_dir_data=int(api.slice_data("wind","winddir"))
-    if api.slice_data("wind","windspeedmph", "unit") == "mph":
-        wind_speed_data=round(float(api.slice_data("wind","windspeedmph"))*1.60934,1)
-        wind_gust_data=round(float(api.slice_data("wind","windgustmph"))*1.60934,1)
+    wind_dir_data=int(api.slice_data(realtime_data, "wind","winddir"))
+    if api.slice_data(realtime_data, "wind","windspeedmph", "unit") == "mph":
+        wind_speed_data=round(float(api.slice_data(realtime_data, "wind","windspeedmph"))*1.60934,1)
+        wind_gust_data=round(float(api.slice_data(realtime_data, "wind","windgustmph"))*1.60934,1)
     else:
-        wind_speed_data=round(float(api.slice_data("wind","windspeedmph")),1)
-        wind_gust_data=round(float(api.slice_data("wind","windgustmph")),1)
+        wind_speed_data=round(float(api.slice_data(realtime_data, "wind","windspeedmph")),1)
+        wind_gust_data=round(float(api.slice_data(realtime_data, "wind","windgustmph")),1)
 
     # Solar data
-    if api.slice_data("so_uv","solarradiation", "unit") == "W/m\u00b2":
-        solar_radiation_data=round(float(api.slice_data("so_uv","solarradiation"))/0.0079,0)
+    if api.slice_data(realtime_data, "so_uv","solarradiation", "unit") == "W/m\u00b2":
+        solar_radiation_data=round(float(api.slice_data(realtime_data, "so_uv","solarradiation"))/0.0079,0)
     else:
-        solar_radiation_data=round(float(api.slice_data("so_uv","solarradiation")),0)
-    solar_uv_data=int(api.slice_data("so_uv","uv"))
+        solar_radiation_data=round(float(api.slice_data(realtime_data, "so_uv","solarradiation")),0)
+    solar_uv_data=int(api.slice_data(realtime_data, "so_uv","uv"))
 
     # Rain data
-    rain_rate_data=round(float(api.slice_data("rain","rainratein"))*25.4,1)
-    rain_event_data=round(float(api.slice_data("rain","eventrainin"))*25.4,1)
-    rain_hourly_data=round(float(api.slice_data("rain","hourlyrainin"))*25.4,1)
-    rain_daily_data=round(float(api.slice_data("rain","dailyrainin"))*25.4,1)
-    rain_weekly_data=round(float(api.slice_data("rain","weeklyrainin"))*25.4,1)
-    rain_monthly_data=round(float(api.slice_data("rain","monthlyrainin"))*25.4,1)
-
-    logging.info("Data retrieval succes")
+    rain_rate_data=round(float(api.slice_data(realtime_data, "rain","rainratein"))*25.4,1)
+    rain_event_data=round(float(api.slice_data(realtime_data, "rain","eventrainin"))*25.4,1)
+    rain_hourly_data=round(float(api.slice_data(realtime_data, "rain","hourlyrainin"))*25.4,1)
+    rain_daily_data=round(float(api.slice_data(realtime_data, "rain","dailyrainin"))*25.4,1)
+    rain_weekly_data=round(float(api.slice_data(realtime_data, "rain","weeklyrainin"))*25.4,1)
+    rain_monthly_data=round(float(api.slice_data(realtime_data, "rain","monthlyrainin"))*25.4,1)
+    
+    message = "Data retrieved."
+    logging.info(message)
                  
 except:
     error_message = "Data could not be retrieved."
@@ -134,9 +145,11 @@ try:
                 rain_monthly_data)
     cur.execute(query, values)
     conn.commit()
+    message = "Pege Froggit data stored"
+    logging.info(message)
 except:
     error_message = "Pege Froggit data could not be stored"
     nf.send_mail(subject, error_message, cf.MAIL_TO_MAIN)
     logging.error(error_message)
 
-api.check_connection()
+api.check_connection(realtime_data)

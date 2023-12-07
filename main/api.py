@@ -9,29 +9,26 @@ from main import notifier as nf
 
 subject = "PEGE FROGGIT API - Alert"
 
-def get_token():
-    access_token_url = "https://api.ecowitt.net/api/token?grant_type="\
-        "client_credential&appid=" + cf.APP_ID + "&secret=" + cf.SECRET
+def read_json(url):
+    json_url = urlopen(url).read()
+    return(json_url)
+
+def get_token(json_file):
     try:
-        html = urlopen(access_token_url).read()
-        access_token_json = json.loads(html)
+        access_token_json = json.loads(json_file)
         access_token = access_token_json["access_token"]
-        logging.info("Access token provided successfully!")
+        logging.info("Access token retrieved successfully!")
         logging.info("Access token provided: " + access_token)
         return(access_token)
     except:
         error_message = "Access token could not be retrieved!"
         logging.error(error_message)
-        logging.info(access_token_url)
         nf.send_mail(subject, error_message, cf.MAIL_TO_MAIN)
 
 # Script to get JSON file for real time weather data
-def get_data():
-    realtime_url="https://api.ecowitt.net/api/devicedata/real_time?access_token="\
-        +get_token()+"&openid="+cf.OPEN_ID+"&lang=en&call_back=all"
+def get_data(json_file):
     try:
-        realtime_datafile = urlopen(realtime_url).read().decode()
-        realtime_data = json.loads(realtime_datafile)
+        realtime_data = json.loads(json_file)
         logging.info("Json file available!")
         return(realtime_data)
     except:
@@ -39,19 +36,17 @@ def get_data():
         logging.error(error_message)
         nf.send_mail(subject, error_message, cf.MAIL_TO_MAIN)
 
-realtime_data = get_data()
-
-def get_timestamp():
+def get_timestamp(realtime_data):
     timestamp=datetime.utcfromtimestamp(int(realtime_data["time"])).strftime("%Y-%m-%d %H:%M:%S")
     logging.info("Timestamp: " + timestamp)
     return(timestamp)
 
-def slice_data(l1, l2, l3="value"):
+def slice_data(realtime_data, l1, l2, l3="value"):
     slice = realtime_data["data"][l1][l2][l3]
     return(slice)
 
 # Check connection Pege Froggit (loop through data categories to find outdoor data)
-def check_connection():
+def check_connection(realtime_data):
     outdoor_data = 0
     for i in realtime_data["data"]:
         if  i == "outdoor":
